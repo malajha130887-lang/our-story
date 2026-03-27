@@ -10,7 +10,8 @@
         :root { 
             --pink: #ffafbd; 
             --rose: #ff7675; 
-            --glass: rgba(10, 10, 10, 0.85); 
+            /* Lightened the glass to show more video */
+            --glass: rgba(0, 0, 0, 0.45); 
         }
 
         body, html { 
@@ -35,9 +36,10 @@
             position: relative;
         }
 
+        /* Toned down the darkness so videos are clear */
         .overlay-dim {
             position: absolute; inset: 0;
-            background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
             z-index: 1;
         }
 
@@ -49,22 +51,25 @@
 
         .card {
             background: var(--glass);
-            padding: 40px;
+            padding: 35px;
             border-radius: 30px;
             text-align: center;
             width: 85%;
-            max-width: 500px;
-            max-height: 80vh;
+            max-width: 480px;
+            max-height: 75vh;
             overflow-y: auto;
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 175, 189, 0.2);
+            /* Blur helps text stay readable even if video is bright */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 175, 189, 0.3);
             z-index: 10;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
         }
 
         h1 { 
             font-family: 'Dancing Script', cursive; 
             font-size: 2.8rem; margin: 0 0 15px 0; color: var(--pink); 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
         p { 
@@ -74,6 +79,7 @@
             white-space: pre-wrap; 
             text-align: center;
             margin: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
 
         .heart {
@@ -91,7 +97,7 @@
             position: fixed; bottom: 25px; right: 25px; z-index: 100; 
             background: rgba(255,255,255,0.1); color: var(--pink); 
             border: 1px solid var(--pink); padding: 15px; border-radius: 50%; 
-            cursor: pointer; font-size: 20px;
+            cursor: pointer; font-size: 20px; backdrop-filter: blur(5px);
         }
 
         #upload-ui { 
@@ -134,7 +140,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- 1. PRE-LOADED CHAPTERS ---
         const PRELOADED_MEMORIES = [
             { 
                 url: "https://www.youtube.com/watch?v=_Yl2xTbzG-s", 
@@ -163,16 +168,15 @@
             }
         ];
 
-        // --- 2. FIREBASE CONFIG (FILL THIS IN) ---
         const firebaseConfig = {
-  apiKey: "AIzaSyDLybOiNJ6fvLC-g4uqz-VHosFjwAGGX5s",
-  authDomain: "love-4b3bb.firebaseapp.com",
-  projectId: "love-4b3bb",
-  storageBucket: "love-4b3bb.firebasestorage.app",
-  messagingSenderId: "69142118015",
-  appId: "1:69142118015:web:2021db86565375be77094a",
-  measurementId: "G-VXBFW27JXL"
-};
+            apiKey: "AIzaSyDLybOiNJ6fvLC-g4uqz-VHosFjwAGGX5s",
+            authDomain: "love-4b3bb.firebaseapp.com",
+            projectId: "love-4b3bb",
+            storageBucket: "love-4b3bb.firebasestorage.app",
+            messagingSenderId: "69142118015",
+            appId: "1:69142118015:web:2021db86565375be77094a",
+            measurementId: "G-VXBFW27JXL"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -206,7 +210,8 @@
             }
 
             if (videoId) {
-                return `<iframe class="video-bg" src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1" allow="autoplay; encrypted-media"></iframe>`;
+                /* Added vq=hd1080 to improve quality */
+                return `<iframe class="video-bg" src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1&vq=hd1080" allow="autoplay; encrypted-media"></iframe>`;
             }
             return ""; 
         }
