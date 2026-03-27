@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Story | Birthday Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root { 
+            --pink: #ffafbd; 
+            --rose: #ff7675; 
+            --glass: rgba(10, 10, 10, 0.85); 
+        }
+
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Playfair Display', serif; 
+            background: #000; color: white; overflow: hidden; 
+        }
+        
+        .scroll-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        section {
+            height: 100vh; width: 100%;
+            scroll-snap-align: start;
+            background-size: cover;
+            background-position: center;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+
+        .overlay-dim {
+            position: absolute; inset: 0;
+            background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+            z-index: 1;
+        }
+
+        .video-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 0; border: none;
+            pointer-events: none;
+        }
+
+        .card {
+            background: var(--glass);
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            width: 85%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 175, 189, 0.2);
+            z-index: 10;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+
+        h1 { 
+            font-family: 'Dancing Script', cursive; 
+            font-size: 2.8rem; margin: 0 0 15px 0; color: var(--pink); 
+        }
+
+        p { 
+            font-size: 1.1rem; 
+            line-height: 1.8; 
+            font-style: italic; 
+            white-space: pre-wrap; 
+            text-align: center;
+            margin: 0;
+        }
+
+        .heart {
+            position: absolute; color: var(--rose);
+            font-size: 20px; animation: float 6s infinite linear;
+            opacity: 0; z-index: 5; pointer-events: none;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(105vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+
+        #admin-lock { 
+            position: fixed; bottom: 25px; right: 25px; z-index: 100; 
+            background: rgba(255,255,255,0.1); color: var(--pink); 
+            border: 1px solid var(--pink); padding: 15px; border-radius: 50%; 
+            cursor: pointer; font-size: 20px;
+        }
+
+        #upload-ui { 
+            display: none; position: fixed; top: 20px; left: 50%; 
+            transform: translateX(-50%); z-index: 1000; background: white; 
+            color: #333; padding: 25px; border-radius: 20px; 
+            flex-direction: column; gap: 12px; width: 340px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8); 
+        }
+        input, textarea { padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-family: inherit; }
+        textarea { height: 120px; resize: none; }
+        .post-btn { background: var(--rose); color: white; border: none; padding: 12px; cursor: pointer; border-radius: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <button id="admin-lock" onclick="window.checkAccess()">❤</button>
+
+    <div id="upload-ui">
+        <h3 style="margin:0; font-family:'Dancing Script', cursive; font-size: 1.8rem;">Add a New Memory</h3>
+        <input type="text" id="urlInput" placeholder="Image URL or YouTube Link">
+        <input type="text" id="titleInput" placeholder="Memory Title">
+        <textarea id="noteInput" placeholder="Write your story..."></textarea>
+        <button class="post-btn" id="save-btn">Save to Our Story</button>
+        <button onclick="document.getElementById('upload-ui').style.display='none'" style="background:none; border:none; color:gray; cursor:pointer">Close</button>
+    </div>
+
+    <div class="scroll-container" id="feed">
+        <section style="background: linear-gradient(to bottom, #1a1a1a, #000000);">
+            <div class="overlay-dim"></div>
+            <div class="card">
+                <h1>our memories</h1>
+                <p>happy bdy agr yeh bdy tk complete hojaye.\n\nThis is a living gallery of every beautiful moment we've shared. Scroll down to travel through time with me.</p>
+                <div style="margin-top:25px; font-size: 0.8rem; color: var(--pink); letter-spacing: 2px;">❤ SCROLL ❤</div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- 1. PRE-LOADED CHAPTERS ---
+        const PRELOADED_MEMORIES = [
+            { 
+                url: "https://www.youtube.com/watch?v=_Yl2xTbzG-s", 
+                title: "Chapter 1: AURA -ve", 
+                note: "ok so this was our 1st meetup aise daalna\n\n uhmegle ka tha but there was no photo uska toh yaha se \n\n start i mean mujhe yaad hai that kfc burger \n\n aapne mummy se baat kri thi mtlb main ne aapne lawde lagwaye the \n\n just ki cheeks pull kr sku then ofc my aura -ve rasta bhul jaana \n\n then skpuri wala rasta last main waffle mtlb pata tabhi chl gaya hoga how bhondu i am \n\n but for me ill always remember that \n\n moment was cute" 
+            },
+            { 
+                url: "https://www.youtube.com/watch?v=UUg-Gg7sZ2s", 
+                title: "Chapter 2: Shawarma", 
+                note: "main jaise chizen yaad kr raha hu\n\nmujhe lg raha hai mujhe jhel kaise lete\n\n mtlb aapko 1hr wait karwaya kyuki traffic\n\n then we had shawarma becz aapki pasand\n\nkyuki main gandu hu mujhe smz nahi aata kya khana chaiye \n\n except u i mean thik hai milunga toh maar lena is pr" 
+            },
+            { 
+                url: "https://www.youtube.com/watch?v=1qkhKfcheeI", 
+                title: "Chapter 3: Exam Shit", 
+                note: "okay yaha time se pahuch gaya tha\n\nyeh mt bolna last time 1hr thand main wait krwaya tha\n\nbut haan kharab kismat secret shawarma band tha\n\nbut tbh that shake was good grind house ka\n\n or 1st time main ne chuna kya khana hai and it was good\n\n this time no aura -ve bss address pata lg jaata toh alg baat hoti " 
+            },
+            { 
+                url: "https://www.youtube.com/watch?v=s57n0aj6Kc4", 
+                title: "Chapter 4: Sasural Simar Ka", 
+                note: "just kidding with the title\n\npehli baar dekha aapko darte hue milne se \n\nkya mst funnny fae tha us time aapka cute tho\n\nbut yeahh finally milwa diya bauwa se\n\nacha din tha yeah is se pehle bdy ke din u\n\nu made my day spcl mil kr uske liye thanku" 
+            },
+            { 
+                url: "https://www.youtube.com/watch?v=Kk_VRYU-dF0", 
+                title: "Chapter 5: Hope", 
+                note: "okay mile toh bht baar hai \n\nbut kisi ko videos and photos pasand nahi\n\nisiliye repeating videos dekho i know main bht chidhata hu\n\nbht ajeeb hu or meri yeh bkchodiyan ik u dont like\n\nbut idk why u matter alottttt for me i mean i cant even explain\n\ni want to hug u once sahi se but ik u dont like it isiliye maafi\n\n abh ik yeh padh ke sara gussa aa raha hoga aapko \n\n sorry for it but i hope hum or milte rahe and main hasta rahu aapko\n\n and aapna aura or -ve naa krwau\n\n and hope kisi din date prr maafi just kidding pareshan krne ko" 
+            }
+        ];
+
+        // --- 2. FIREBASE CONFIG (FILL THIS IN) ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyDLybOiNJ6fvLC-g4uqz-VHosFjwAGGX5s",
+  authDomain: "love-4b3bb.firebaseapp.com",
+  projectId: "love-4b3bb",
+  storageBucket: "love-4b3bb.firebasestorage.app",
+  messagingSenderId: "69142118015",
+  appId: "1:69142118015:web:2021db86565375be77094a",
+  measurementId: "G-VXBFW27JXL"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storiesCol = collection(db, "stories");
+        const SECRET_PASSWORD = "AURA-VE"; 
+
+        window.checkAccess = function() {
+            const pass = prompt("Enter our secret word:");
+            if(pass === SECRET_PASSWORD) document.getElementById('upload-ui').style.display = 'flex';
+            else if (pass !== null) alert("Only us! ❤");
+        };
+
+        setInterval(() => {
+            const heart = document.createElement('div');
+            heart.classList.add('heart');
+            heart.innerHTML = '❤';
+            heart.style.left = Math.random() * 100 + "vw";
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 6000);
+        }, 700);
+
+        function getMediaHTML(url) {
+            if (!url) return "";
+            let videoId = "";
+            if (url.includes('youtube.com/watch?v=')) {
+                videoId = url.split('v=')[1].split('&')[0];
+            } else if (url.includes('youtu.be/')) {
+                videoId = url.split('be/')[1].split('?')[0];
+            } else if (url.includes('youtube.com/shorts/')) {
+                videoId = url.split('shorts/')[1].split('?')[0];
+            }
+
+            if (videoId) {
+                return `<iframe class="video-bg" src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1" allow="autoplay; encrypted-media"></iframe>`;
+            }
+            return ""; 
+        }
+
+        function createSection(data) {
+            const section = document.createElement('section');
+            const videoHTML = getMediaHTML(data.url);
+            section.innerHTML = `<div class="overlay-dim"></div>`;
+            if (videoHTML) {
+                section.innerHTML += videoHTML;
+            } else {
+                section.style.backgroundImage = `url('${data.url}')`;
+            }
+            const cleanNote = data.note.replace(/\\n/g, '\n');
+            section.innerHTML += `<div class="card"><h1>${data.title}</h1><p>${cleanNote}</p></div>`;
+            return section;
+        }
+
+        onSnapshot(query(storiesCol, orderBy("createdAt", "asc")), (snapshot) => {
+            const feed = document.getElementById('feed');
+            const welcome = feed.firstElementChild;
+            feed.innerHTML = '';
+            feed.appendChild(welcome);
+
+            PRELOADED_MEMORIES.forEach(mem => feed.appendChild(createSection(mem)));
+            snapshot.forEach((doc) => feed.appendChild(createSection(doc.data())));
+        });
+
+        document.getElementById('save-btn').onclick = async () => {
+            const url = document.getElementById('urlInput').value;
+            const title = document.getElementById('titleInput').value;
+            const note = document.getElementById('noteInput').value;
+            if(url && title && note) {
+                await addDoc(storiesCol, { url, title, note, createdAt: serverTimestamp() });
+                document.getElementById('upload-ui').style.display = 'none';
+                document.querySelectorAll('#upload-ui input, #upload-ui textarea').forEach(i => i.value = '');
+            }
+        };
+    </script>
+</body>
+</html>
